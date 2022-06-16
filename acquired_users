@@ -1,0 +1,28 @@
+--EXPLAIN QUERY PLAN
+with start_date as
+(
+select * from 
+(
+select 
+*, row_number() over(partition by user_id order by month) as r_no
+ from online_retail
+ ) as a where r_no = 1
+)
+select 
+start_month,
+count(distinct case when r_no = 1 then user_id else null end) as total_acquired_user,
+---group_concat(distinct case when r_no = 1 then user_id else null end) as users,
+count(case when month_val = 'M0' then user_id else null end) as 'M+1',
+--group_concat(case when month_val = 'M0' then user_id else null end) as M1_users,
+count(case when  month_val = 'M1' then user_id else null end) as 'M+2',
+---group_concat(case when  month_val = 'M1' then user_id else null end) as M2_users,
+count(case when  month_val = 'M2' then user_id else null end) as 'M+3'
+from 
+(
+select  a.user_id, a.month, b.month as start_month, 'M'||(a.month - b.month) as month_val, 
+row_number() over(partition by a.user_id order by a.month asc) as r_no
+ from online_retail as a
+left join start_date as b 
+on a.user_id = b.user_id
+) as b
+group by start_month
